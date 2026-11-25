@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Codele｜密碼破譯局</title>
+  <style>
+    :root {
+      --bg-paper: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --border-soft: #E5E0D8;
+      --border-active: #A39B8B;
+      --text-main: #3A3632;
+      --text-muted: #847D75;
+      --color-exact: #6AAA64;
+      --color-partial: #C9B458;
+      --color-miss: #787C7E;
+      --key-bg: #EFECE6;
+      --shadow-soft: 0 6px 24px rgba(58, 54, 50, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background-color: var(--bg-paper);
+      color: var(--text-main);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 12px 22px;
+      user-select: none;
+    }
+
+    /* 頂部導覽列 */
+    header {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .brand h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: var(--key-bg);
+      border-color: var(--border-active);
+    }
+
+    /* 模式與輔助工具列 */
+    .mode-bar {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0 4px;
+      gap: 6px;
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: var(--key-bg);
+      padding: 3px;
+      border-radius: 11px;
+      border: 1px solid var(--border-soft);
+    }
+
+    .mode-tab {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-tab.active {
+      background: var(--bg-card);
+      color: var(--text-main);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .tool-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .sub-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 9px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sub-btn:hover:not(:disabled) {
+      background: var(--key-bg);
+      border-color: var(--border-active);
+    }
+
+    .sub-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .sub-btn.hidden {
+      display: none;
+    }
+
+    /* 提示訊息列 */
+    .toast-area {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 4px 0;
+    }
+
+    .toast {
+      background: var(--text-main);
+      color: #FFFFFF;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 20px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 遊戲主網格 */
+    .board-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: 18px;
+      padding: 15px;
+      box-shadow: var(--shadow-soft);
+      margin: 2px 0 12px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 7px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+    }
+
+    .row.shake {
+      animation: shake 0.35s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    .tile {
+      width: 58px;
+      height: 58px;
+      border: 2px solid var(--border-soft);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text-main);
+      background: #FDFCFB;
+      transition: transform 0.1s, border-color 0.15s, background-color 0.3s, color 0.3s;
+    }
+
+    .tile.filled {
+      border-color: var(--border-active);
+      animation: pop 0.12s ease-out;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.92); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    .tile.exact {
+      background-color: var(--color-exact);
+      border-color: var(--color-exact);
+      color: #FFFFFF;
+    }
+
+    .tile.partial {
+      background-color: var(--color-partial);
+      border-color: var(--color-partial);
+      color: #FFFFFF;
+    }
+
+    .tile.miss {
+      background-color: var(--color-miss);
+      border-color: var(--color-miss);
+      color: #FFFFFF;
+    }
+
+    /* 虛擬鍵盤 */
+    .keyboard {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .key-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .key {
+      height: 48px;
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      background: var(--key-bg);
+      color: var(--text-main);
+      font-size: 1.12rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.08s, color 0.2s;
+    }
+
+    .key:active {
+      transform: scale(0.95);
+    }
+
+    .key.action {
+      font-size: 0.85rem;
+      background: #E4DFD5;
+    }
+
+    .key.exact {
+      background: var(--color-exact);
+      border-color: var(--color-exact);
+      color: #FFFFFF;
+    }
+
+    .key.partial {
+      background: var(--color-partial);
+      border-color: var(--color-partial);
+      color: #FFFFFF;
+    }
+
+    .key.miss {
+      background: var(--color-miss);
+      border-color: var(--color-miss);
+      color: #FFFFFF;
+      opacity: 0.7;
+    }
+
+    /* 彈窗系統 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(58, 54, 50, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 390px;
+      padding: 22px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .modal-header h2 {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.3rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .rule-list {
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .rule-list p {
+      margin-bottom: 8px;
+    }
+
+    .example-row {
+      display: flex;
+      gap: 6px;
+      margin: 8px 0 4px;
+    }
+
+    .mini-tile {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      border: 1px solid var(--border-soft);
+    }
+
+    .mini-tile.exact { background: var(--color-exact); color: #fff; border-color: var(--color-exact); }
+    .mini-tile.partial { background: var(--color-partial); color: #fff; border-color: var(--color-partial); }
+    .mini-tile.miss { background: var(--color-miss); color: #fff; border-color: var(--color-miss); }
+
+    /* 戰績統計 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: var(--bg-paper);
+      padding: 10px 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+    }
+
+    .stat-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .dist-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .dist-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .dist-bar-wrap {
+      flex: 1;
+      background: var(--bg-paper);
+      border-radius: 6px;
+      overflow: hidden;
+      height: 20px;
+    }
+
+    .dist-bar {
+      height: 100%;
+      background: var(--color-miss);
+      color: #fff;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      min-width: 22px;
+      transition: width 0.4s ease;
+    }
+
+    .dist-bar.highlight {
+      background: var(--color-exact);
+    }
+
+    .share-section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .answer-reveal {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .answer-reveal strong {
+      color: var(--text-main);
+      letter-spacing: 0.15em;
+      font-size: 1.05rem;
+    }
+
+    .share-btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 12px;
+      background: var(--color-exact);
+      color: #FFFFFF;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .share-btn:disabled {
+      background: var(--border-active);
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 360px) {
+      .tile { width: 50px; height: 50px; font-size: 1.4rem; }
+      .key { height: 42px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>CODELE 密碼破譯局</h1>
+      <span id="subtitle">每日 4 位不重複數字邏輯推理</span>
+    </div>
+    <div class="nav-actions">
+      <button class="icon-btn" id="btnSound" title="音效開關">🔊</button>
+      <button class="icon-btn" id="btnHelp" title="遊戲規則">？</button>
+      <button class="icon-btn" id="btnStats" title="戰績統計">📊</button>
+    </div>
+  </header>
+
+  <div class="mode-bar">
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="daily">📅 每日挑戰</button>
+      <button class="mode-tab" data-mode="practice">♾️ 無限練習</button>
+    </div>
+    <div class="tool-btns">
+      <button class="sub-btn" id="btnHint" title="每局限用 1 次情報支援">💡 提示</button>
+      <button class="sub-btn hidden" id="btnNewPractice">換一題 ↻</button>
+    </div>
+  </div>
+
+  <div class="toast-area">
+    <div class="toast" id="toast">提示訊息</div>
+  </div>
+
+  <main class="board-container">
+    <div class="board" id="board"></div>
+  </main>
+
+  <section class="keyboard" id="keyboard">
+    <div class="key-row">
+      <button class="key" data-key="1">1</button>
+      <button class="key" data-key="2">2</button>
+      <button class="key" data-key="3">3</button>
+      <button class="key" data-key="4">4</button>
+      <button class="key" data-key="5">5</button>
+      <button class="key action" data-key="Backspace">⌫ 刪除</button>
+    </div>
+    <div class="key-row">
+      <button class="key" data-key="6">6</button>
+      <button class="key" data-key="7">7</button>
+      <button class="key" data-key="8">8</button>
+      <button class="key" data-key="9">9</button>
+      <button class="key" data-key="0">0</button>
+      <button class="key action" data-key="Enter">↵ 送出</button>
+    </div>
+  </section>
+
+  <!-- 規則說明彈窗 -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>破譯局操作手冊</h2>
+        <button class="close-btn" data-close="helpModal">&times;</button>
+      </div>
+      <div class="rule-list">
+        <p>系統已加密一組 <strong>4 位數密碼</strong>（數字 0～9，<strong>皆不重複</strong>）。你有 <strong>6 次</strong>機會破譯它！</p>
+        <div class="example-row">
+          <div class="mini-tile exact">3</div>
+          <div class="mini-tile">8</div>
+          <div class="mini-tile">1</div>
+          <div class="mini-tile">9</div>
+        </div>
+        <p>🟩 <strong>綠色</strong>：數字正確，且<strong>位置完全正確</strong>。</p>
+        <div class="example-row">
+          <div class="mini-tile">4</div>
+          <div class="mini-tile partial">7</div>
+          <div class="mini-tile">2</div>
+          <div class="mini-tile">0</div>
+        </div>
+        <p>🟨 <strong>黃色</strong>：密碼包含此數字，但<strong>位置錯誤</strong>。</p>
+        <div class="example-row">
+          <div class="mini-tile">5</div>
+          <div class="mini-tile">6</div>
+          <div class="mini-tile miss">9</div>
+          <div class="mini-tile">1</div>
+        </div>
+        <p>⬜ <strong>灰色</strong>：密碼中<strong>不包含</strong>此數字。每局可使用 1 次「💡 提示」排除一個干擾數字。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 戰績與分享彈窗 -->
+  <div class="modal-backdrop" id="statsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>破譯員戰績檔案</h2>
+        <button class="close-btn" data-close="statsModal">&times;</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-num" id="statPlayed">0</div>
+          <div class="stat-label">已遊玩</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statWinRate">0%</div>
+          <div class="stat-label">破譯勝率</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statStreak">0</div>
+          <div class="stat-label">目前連勝</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statMaxStreak">0</div>
+          <div class="stat-label">最高連勝</div>
+        </div>
+      </div>
+      <div class="dist-title">猜中次數分佈</div>
+      <div id="distContainer"></div>
+      <div class="share-section">
+        <div class="answer-reveal" id="answerReveal"></div>
+        <button class="share-btn" id="btnShare" disabled>📋 複製本局破譯戰績</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CODE_LENGTH = 4;
+    const MAX_ATTEMPTS = 6;
+    const STORAGE_STATS_KEY = "codele_stats_v1";
+    const STORAGE_DAILY_KEY = "codele_daily_state_v1";
+
+    let currentMode = "daily";
+    let secretCode = "";
+    let guesses = [];
+    let eliminatedHints = [];
+    let hintUsed = false;
+    let currentInput = "";
+    let gameOver = false;
+    let isWin = false;
+    let soundEnabled = true;
+    let toastTimer = null;
+    let audioCtx = null;
+
+    // Web Audio API 程式合成音效
+    function playSound(type) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === "tap") {
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === "error") {
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.linearRampToValueAtTime(120, now + 0.16);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } else if (type === "submit") {
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(587.33, now + 0.07);
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } else if (type === "win") {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = "triangle";
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.frequency.setValueAtTime(freq, now + idx * 0.09);
+            g.gain.setValueAtTime(0.11, now + idx * 0.09);
+            g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.25);
+            o.start(now + idx * 0.09);
+            o.stop(now + idx * 0.09 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    function getTodayString() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function generateDailyCode(dateStr) {
+      let hash = 2166136261;
+      for (let i = 0; i < dateStr.length; i++) {
+        hash ^= dateStr.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+      for (let i = digits.length - 1; i > 0; i--) {
+        hash = (Math.imul(hash, 1664525) + 1013904223) >>> 0;
+        const j = hash % (i + 1);
+        [digits[i], digits[j]] = [digits[j], digits[i]];
+      }
+      return digits.slice(0, CODE_LENGTH).join("");
+    }
+
+    function generateRandomCode() {
+      const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+      for (let i = digits.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [digits[i], digits[j]] = [digits[j], digits[i]];
+      }
+      return digits.slice(0, CODE_LENGTH).join("");
+    }
+
+    function buildBoardDOM() {
+      const board = document.getElementById("board");
+      board.innerHTML = "";
+      for (let r = 0; r < MAX_ATTEMPTS; r++) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.id = `row-${r}`;
+        for (let c = 0; c < CODE_LENGTH; c++) {
+          const tile = document.createElement("div");
+          tile.className = "tile";
+          tile.id = `tile-${r}-${c}`;
+          row.appendChild(tile);
+        }
+        board.appendChild(row);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2000);
+    }
+
+    function shakeCurrentRow() {
+      const row = document.getElementById(`row-${guesses.length}`);
+      if (!row) return;
+      row.classList.remove("shake");
+      void row.offsetWidth;
+      row.classList.add("shake");
+    }
+
+    function loadStats() {
+      const raw = localStorage.getItem(STORAGE_STATS_KEY);
+      if (raw) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      return {
+        played: 0,
+        wins: 0,
+        streak: 0,
+        maxStreak: 0,
+        dist: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+      };
+    }
+
+    function saveStats(stats) {
+      localStorage.setItem(STORAGE_STATS_KEY, JSON.stringify(stats));
+    }
+
+    function recordGameResult(won, attemptsCount) {
+      const stats = loadStats();
+      stats.played += 1;
+      if (won) {
+        stats.wins += 1;
+        stats.streak += 1;
+        if (stats.streak > stats.maxStreak) stats.maxStreak = stats.streak;
+        stats.dist[attemptsCount] = (stats.dist[attemptsCount] || 0) + 1;
+      } else {
+        stats.streak = 0;
+      }
+      saveStats(stats);
+    }
+
+    function saveDailyProgress() {
+      if (currentMode !== "daily") return;
+      const payload = {
+        date: getTodayString(),
+        secretCode,
+        guesses,
+        eliminatedHints,
+        hintUsed,
+        gameOver,
+        isWin
+      };
+      localStorage.setItem(STORAGE_DAILY_KEY, JSON.stringify(payload));
+    }
+
+    function loadDailyProgress() {
+      const raw = localStorage.getItem(STORAGE_DAILY_KEY);
+      if (!raw) return null;
+      try {
+        const data = JSON.parse(raw);
+        if (data.date === getTodayString()) return data;
+      } catch (e) {}
+      return null;
+    }
+
+    function initGame(mode) {
+      currentMode = mode;
+      document.querySelectorAll(".mode-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+
+      const practiceBtn = document.getElementById("btnNewPractice");
+      const subtitle = document.getElementById("subtitle");
+
+      if (mode === "daily") {
+        practiceBtn.classList.add("hidden");
+        const today = getTodayString();
+        subtitle.textContent = `每日任務 #${today}`;
+        const saved = loadDailyProgress();
+        if (saved) {
+          secretCode = saved.secretCode;
+          guesses = saved.guesses || [];
+          eliminatedHints = saved.eliminatedHints || [];
+          hintUsed = !!saved.hintUsed;
+          gameOver = !!saved.gameOver;
+          isWin = !!saved.isWin;
+          currentInput = "";
+        } else {
+          secretCode = generateDailyCode(today);
+          guesses = [];
+          eliminatedHints = [];
+          hintUsed = false;
+          currentInput = "";
+          gameOver = false;
+          isWin = false;
+        }
+      } else {
+        practiceBtn.classList.remove("hidden");
+        subtitle.textContent = "無限練習模式｜隨時重抽密碼";
+        secretCode = generateRandomCode();
+        guesses = [];
+        eliminatedHints = [];
+        hintUsed = false;
+        currentInput = "";
+        gameOver = false;
+        isWin = false;
+      }
+
+      renderAll();
+    }
+
+    function renderAll() {
+      for (let r = 0; r < MAX_ATTEMPTS; r++) {
+        for (let c = 0; c < CODE_LENGTH; c++) {
+          const tile = document.getElementById(`tile-${r}-${c}`);
+          tile.className = "tile";
+          tile.textContent = "";
+
+          if (r < guesses.length) {
+            tile.textContent = guesses[r].code[c];
+            tile.classList.add(guesses[r].result[c]);
+          } else if (r === guesses.length && !gameOver) {
+            if (c < currentInput.length) {
+              tile.textContent = currentInput[c];
+              tile.classList.add("filled");
+            }
+          }
+        }
+      }
+
+      const keyPriority = { exact: 3, partial: 2, miss: 1 };
+      const keyStates = {};
+
+      eliminatedHints.forEach(d => {
+        keyStates[d] = "miss";
+      });
+
+      guesses.forEach(g => {
+        for (let i = 0; i < CODE_LENGTH; i++) {
+          const ch = g.code[i];
+          const res = g.result[i];
+          if (!keyStates[ch] || keyPriority[res] > keyPriority[keyStates[ch]]) {
+            keyStates[ch] = res;
+          }
+        }
+      });
+
+      document.querySelectorAll(".key[data-key]").forEach(btn => {
+        const k = btn.dataset.key;
+        if (k.length === 1) {
+          btn.classList.remove("exact", "partial", "miss");
+          if (keyStates[k]) btn.classList.add(keyStates[k]);
+        }
+      });
+
+      const hintBtn = document.getElementById("btnHint");
+      hintBtn.disabled = hintUsed || gameOver;
+      hintBtn.textContent = hintUsed ? "💡 已使用" : "💡 提示";
+    }
+
+    function useHint() {
+      if (hintUsed || gameOver) return;
+      const knownDigits = new Set(eliminatedHints);
+      guesses.forEach(g => g.code.split("").forEach(ch => knownDigits.add(ch)));
+
+      const candidates = ["0","1","2","3","4","5","6","7","8","9"].filter(
+        d => !secretCode.includes(d) && !knownDigits.has(d)
+      );
+
+      if (candidates.length === 0) {
+        showToast("已無可排除的干擾數字！");
+        return;
+      }
+
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      eliminatedHints.push(chosen);
+      hintUsed = true;
+      playSound("submit");
+      showToast(`💡 情報支援：密碼中不包含數字「${chosen}」`);
+      saveDailyProgress();
+      renderAll();
+    }
+
+    function evaluateGuess(guess, target) {
+      return guess.split("").map((digit, idx) => {
+        if (digit === target[idx]) return "exact";
+        if (target.includes(digit)) return "partial";
+        return "miss";
+      });
+    }
+
+    function handleInput(key) {
+      if (gameOver) return;
+
+      if (/^[0-9]$/.test(key)) {
+        if (currentInput.length >= CODE_LENGTH) return;
+        if (currentInput.includes(key)) {
+          playSound("error");
+          showToast("密碼規則：4 個數字不能重複喔！");
+          shakeCurrentRow();
+          return;
+        }
+        playSound("tap");
+        currentInput += key;
+        renderAll();
+      } else if (key === "Backspace") {
+        if (currentInput.length > 0) {
+          playSound("tap");
+          currentInput = currentInput.slice(0, -1);
+          renderAll();
+        }
+      } else if (key === "Enter") {
+        if (currentInput.length < CODE_LENGTH) {
+          playSound("error");
+          showToast("請輸入完整的 4 位數密碼");
+          shakeCurrentRow();
+          return;
+        }
+
+        const result = evaluateGuess(currentInput, secretCode);
+        guesses.push({ code: currentInput, result });
+        currentInput = "";
+
+        if (result.every(r => r === "exact")) {
+          gameOver = true;
+          isWin = true;
+          playSound("win");
+          recordGameResult(true, guesses.length);
+          showToast(`🎉 破譯成功！共花費 ${guesses.length} 次`);
+          setTimeout(() => openStatsModal(), 900);
+        } else if (guesses.length >= MAX_ATTEMPTS) {
+          gameOver = true;
+          isWin = false;
+          playSound("error");
+          recordGameResult(false, MAX_ATTEMPTS);
+          showToast(`💥 次數用盡！正確密碼是 ${secretCode}`);
+          setTimeout(() => openStatsModal(), 1100);
+        } else {
+          playSound("submit");
+        }
+
+        saveDailyProgress();
+        renderAll();
+      }
+    }
+
+    function openStatsModal() {
+      const stats = loadStats();
+      document.getElementById("statPlayed").textContent = stats.played;
+      const winRate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0;
+      document.getElementById("statWinRate").textContent = `${winRate}%`;
+      document.getElementById("statStreak").textContent = stats.streak;
+      document.getElementById("statMaxStreak").textContent = stats.maxStreak;
+
+      const distContainer = document.getElementById("distContainer");
+      distContainer.innerHTML = "";
+      const maxVal = Math.max(1, ...Object.values(stats.dist));
+
+      for (let i = 1; i <= MAX_ATTEMPTS; i++) {
+        const count = stats.dist[i] || 0;
+        const pct = Math.max(8, Math.round((count / maxVal) * 100));
+        const isCurrentWinRow = gameOver && isWin && guesses.length === i;
+        const row = document.createElement("div");
+        row.className = "dist-row";
+        row.innerHTML = `
+          <span>${i}</span>
+          <div class="dist-bar-wrap">
+            <div class="dist-bar ${isCurrentWinRow ? "highlight" : ""}" style="width: ${pct}%">${count}</div>
+          </div>
+        `;
+        distContainer.appendChild(row);
+      }
+
+      const reveal = document.getElementById("answerReveal");
+      const shareBtn = document.getElementById("btnShare");
+
+      if (gameOver) {
+        reveal.innerHTML = isWin
+          ? `本局狀態：<strong>破譯成功 (${guesses.length}/${MAX_ATTEMPTS})</strong>`
+          : `本局答案：<strong>${secretCode}</strong>`;
+        shareBtn.disabled = false;
+      } else {
+        reveal.textContent = "完成本局破譯後即可複製戰績方塊圖";
+        shareBtn.disabled = true;
+      }
+
+      document.getElementById("statsModal").classList.add("open");
+    }
+
+    function copyShareText() {
+      if (!gameOver) return;
+      const header = currentMode === "daily"
+        ? `Codele 密碼破譯局 (${getTodayString()})`
+        : `Codele 密碼破譯局 (練習模式)`;
+      const score = isWin ? `${guesses.length}/${MAX_ATTEMPTS}` : `X/${MAX_ATTEMPTS}`;
+      const emojiMap = { exact: "🟩", partial: "🟨", miss: "⬜" };
+      const grid = guesses
+        .map(g => g.result.map(r => emojiMap[r]).join(""))
+        .join("\n");
+
+      const text = `${header} ${score}\n\n${grid}`;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("✅ 已複製戰績到剪貼簿！");
+      }).catch(() => {
+        showToast("複製失敗，請手動截圖分享");
+      });
+    }
+
+    document.getElementById("keyboard").addEventListener("click", e => {
+      const btn = e.target.closest(".key");
+      if (btn) handleInput(btn.dataset.key);
+    });
+
+    document.addEventListener("keydown", e => {
+      if (document.querySelector(".modal-backdrop.open")) {
+        if (e.key === "Escape") {
+          document.querySelectorAll(".modal-backdrop").forEach(m => m.classList.remove("open"));
+        }
+        return;
+      }
+      if (/^[0-9]$/.test(e.key) || e.key === "Backspace" || e.key === "Enter") {
+        e.preventDefault();
+        handleInput(e.key);
+      }
+    });
+
+    document.querySelectorAll(".mode-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        playSound("tap");
+        initGame(tab.dataset.mode);
+      });
+    });
+
+    document.getElementById("btnHint").addEventListener("click", useHint);
+
+    document.getElementById("btnNewPractice").addEventListener("click", () => {
+      playSound("tap");
+      initGame("practice");
+      showToast("已重新生成隨機密碼！");
+    });
+
+    document.getElementById("btnSound").addEventListener("click", e => {
+      soundEnabled = !soundEnabled;
+      e.target.textContent = soundEnabled ? "🔊" : "🔇";
+      showToast(soundEnabled ? "已開啟音效" : "已靜音");
+    });
+
+    document.getElementById("btnHelp").addEventListener("click", () => {
+      document.getElementById("helpModal").classList.add("open");
+    });
+
+    document.getElementById("btnStats").addEventListener("click", openStatsModal);
+    document.getElementById("btnShare").addEventListener("click", copyShareText);
+
+    document.querySelectorAll("[data-close]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.getElementById(btn.dataset.close).classList.remove("open");
+      });
+    });
+
+    document.querySelectorAll(".modal-backdrop").forEach(backdrop => {
+      backdrop.addEventListener("click", e => {
+        if (e.target === backdrop) backdrop.classList.remove("open");
+      });
+    });
+
+    buildBoardDOM();
+    initGame("daily");
+  </script>
+</body>
+</html>
